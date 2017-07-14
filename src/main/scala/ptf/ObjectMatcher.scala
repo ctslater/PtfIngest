@@ -17,26 +17,35 @@ class ObjectSet {
   import ObjectSet.{RaDec, SourceId, ObjectId}
 
   var objectTree: KDTreeMap[RaDec, ObjectId] = KDTreeMap()
-  val sourceToObject: Map[SourceId, ObjectId] = Map()
-  var maxObjId: Int = 0
+  var sourceToObject: Map[SourceId, ObjectId] = Map()
+
+  // Singleton that manages new object IDs
+  object objIdCounter {
+    var id: ObjectId = 0
+    def getNext: ObjectId = {
+      id = id + 1
+      id
+    }
+  }
 
   def addNewSources(sources: Seq[(RaDec, SourceId)]) : Unit = {
     val newSourceTree: KDTreeMap[RaDec, SourceId] = KDTreeMap.fromSeq(sources)
     val newMatches = find_matches(newSourceTree, objectTree)
 
     val sourceIdSet = sources.map(_._2).toSet
-    val unmatchedIds = sourceIdSet.diff(newMatches.keys.toSet)
+    val unmatchedSourceIds = sourceIdSet.diff(newMatches.keys.toSet)
+    val newSourcesMap: Map[SourceId, ObjectId] = unmatchedSourceIds.map(
+      sourceId => (sourceId -> objIdCounter.getNext )).toMap
 
+    // Update the sourceToObject maping with new objects
+    sourceToObject = sourceToObject ++ newSourcesMap
 
-    // Need to assign object ids to unmatched sources
+    // Add newly-generated objects to the object tree
+    objectTree = KDTreeMap.fromSeq( objectTree.toSeq ++ sources.collect({
+      case (coord, sourceId) if unmatchedSourceIds(sourceId)
+        => (coord, newSourcesMap(sourceId)) })
+      )
 
-    // Currently assigning the wrong ID to this, bad.
-    objectTree = KDTreeMap.fromSeq(objectTree.toSeq ++ sources.filter({case (coord, id) => unmatchedIds(id)}))
-    println(sourceIdSet, unmatchedIds)
-
-
-    // For handshakes, add
-    // sourceToObject = sourceToObject ++ newMatches
   }
 
   def findNearestAcceptable[V](tree: KDTreeMap[RaDec, V], key: (Double, Double),
