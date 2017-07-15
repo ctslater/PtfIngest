@@ -38,7 +38,7 @@ class ObjectSet {
       sourceId => (sourceId -> objIdCounter.getNext )).toMap
 
     // Update the sourceToObject maping with new objects
-    sourceToObject = sourceToObject ++ newSourcesMap
+    sourceToObject = sourceToObject ++ newMatches ++ newSourcesMap
 
     // Add newly-generated objects to the object tree
     objectTree = KDTreeMap.fromSeq( objectTree.toSeq ++ sources.collect({

@@ -45,4 +45,23 @@ class ObjectSetTest extends UnitSpec {
     objects.sourceToObject.size shouldBe 4
   }
 
+  it should "match a second set of sources" in {
+    val sources1: Seq[(RaDec, SourceId)] =
+      Seq( ((1.1, 1.2), 1),
+           ((2.1, 2.2), 2),
+           ((3.1, 3.2), 3),
+           ((4.1, 4.2), 4))
+    val sources2: Seq[(RaDec, SourceId)] =
+      Seq( ((1.1, 1.2), 5),
+           ((2.1, 2.2), 6),
+           ((6.1, 6.2), 7),
+           ((7.1, 7.2), 8))
+    val objects = new ObjectSet
+    objects.addNewSources(sources1)
+    objects.addNewSources(sources2)
+
+    objects.objectTree.size shouldBe 6
+    objects.sourceToObject.size shouldBe 8
+  }
+
 }

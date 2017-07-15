@@ -23,7 +23,7 @@ object PtfFilename {
 
 case class CoordsIdZone(source_id: Long, visit: Long, ALPHAWIN_J2000: Double, DELTAWIN_J2000: Double, zone: Int)
 case class CoordsId(source_id: Long, visit: Long, ALPHAWIN_J2000: Double, DELTAWIN_J2000: Double)
-case class SrcObjMatches(source_id: Long, obj_id: Long)
+case class SrcObjMatches(source_id: Long, obj_id: Long, zone: Long)
 
 object CoordsIdZone {
   def fromCoordsId(input: CoordsId, zone: Int) = {
@@ -46,7 +46,7 @@ object PtfIngest {
       Seq(-buffer, 0, buffer).map(offset => ((dec + offset + 90)/height).ceil.toInt).distinct
     }
 
-    val height = 60/3660.0
+    val height = 60/3600.0
     val buffer = 10/3600.0
 
     computeZone(row.DELTAWIN_J2000, height, buffer).map(zone => CoordsIdZone.fromCoordsId(row, zone))
@@ -57,22 +57,15 @@ object PtfIngest {
    *
    */
 
-  def match_within_zone(zone: Int, rows: Iterator[CoordsIdZone]): Iterator[SrcObjMatches] = {
+  def match_within_zone(zone: Int, rows: Iterator[CoordsIdZone]): Iterable[SrcObjMatches] = {
 
-    // find_matches
-    rows.map(row => SrcObjMatches(row.source_id, obj_id = 5L))
-    /*
-    val coord_source_tuples = rows.toList.groupBy(_.visit).map({
+    val sourceTuples = rows.toList.groupBy(_.visit).map({
       case (visit, visit_rows) => visit_rows.map(row => ((row.ALPHAWIN_J2000, row.DELTAWIN_J2000), row.source_id))})
 
+    val objects = new ObjectSet
+    sourceTuples foreach objects.addNewSources _
 
-    val trees = coord_source_tuples.map(KDTreeMap.fromSeq(_))
-
-    val matches: Iterable[Map[Long, Long]] = trees match {
-      case (head: KDTreeMap[(Double, Double), Long] ) +: tail => tail.map(find_matches(head, _))
-      case Nil => Nil }
-    matches.map(_.map(tuple => SrcObjMatches(tuple._1, tuple._2))).flatten
-    */
+    objects.sourceToObject.map({case (src_id, obj_id) => SrcObjMatches(src_id, zone*10000 + obj_id, zone)})
   }
 
 }
