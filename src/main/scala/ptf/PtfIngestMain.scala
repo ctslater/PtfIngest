@@ -6,10 +6,6 @@ import org.apache.spark.sql.functions.avg
 import java.io.File
 import PtfIngest._
 
-/*
- * Program Entry
- */
-
 object PtfIngestMain {
 
   val spark = SparkSession.builder().appName("PtfIngest").getOrCreate()
@@ -57,6 +53,8 @@ object PtfIngestMain {
 
     val matched_data = matches.join(all_dfs.select(cols=ok_keys.map(all_dfs.col(_)):_*), "source_id")
 
+    // This should share zone determination code with assign_zones, but for
+    // the moment this duplication is workable.
     val zoneHeight = 60/3600.0
     val object_table = matched_data.groupBy("obj_id", "zone")
                                    .agg(avg(matched_data.col("ALPHAWIN_J2000")),
@@ -66,7 +64,6 @@ object PtfIngestMain {
                                    .withColumnRenamed("avg(ALPHAWIN_J2000)", "ra")
                                    .withColumnRenamed("avg(MAG_BEST)", "MAG_BEST")
                                    .filter(s"zone == ceil((dec + 90)/${zoneHeight})")
-    object_table.printSchema
 
     val filtered_sources = object_table.select("obj_id").join(matched_data, "obj_id")
 
