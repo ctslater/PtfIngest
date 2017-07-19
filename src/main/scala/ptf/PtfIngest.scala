@@ -46,7 +46,7 @@ object PtfIngest {
       Seq(-buffer, 0, buffer).map(offset => ((dec + offset + 90)/height).ceil.toInt).distinct
     }
 
-    val height = 60/3600.0
+    val height = 30/3600.0
     val buffer = 10/3600.0
 
     computeZone(row.DELTAWIN_J2000, height, buffer).map(zone => CoordsIdZone.fromCoordsId(row, zone))
