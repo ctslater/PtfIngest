@@ -28,6 +28,9 @@ object PtfIngestMain {
   }
 
   def getKeysFromS3(bucketName: String, prefix: String): List[String] = {
+    /* This function is no longer used since we rely on Spark's globbing
+       of S3 paths. Saving in case it's useful later though.
+    */
     val s3client: AmazonS3 = new AmazonS3Client(new InstanceProfileCredentialsProvider())
 
     var req = new ListObjectsV2Request().withBucketName(bucketName).withPrefix(prefix)
@@ -40,54 +43,18 @@ object PtfIngestMain {
       keys ++= result.getObjectSummaries.toList.map(_.getKey())
       req.setContinuationToken(result.getNextContinuationToken())
       moreResults = result.isTruncated()
-      print("$")
-
     } while (moreResults)
     keys.toList
   }
 
   def main(args: Array[String]) {
 
-    val use_s3 = true
-
-    /*
-    val ptfFiles: Seq[PtfFilename] = if (use_s3) {
-      val s3Keys = getKeysFromS3("palomar-transient-factory", "input_parquet")
-      s3Keys.map(key => s"s3://palomar-transient-factory/${key}").map(PtfFilename(_)).flatten
-    } else {
-      val data_dir = new File(args(0))
-      if(data_dir.listFiles == null) {
-        println(s"Data directory ${args(0)} is invalid")
-        System.exit(1)
-      }
-      data_dir.listFiles.toList.map(_.toString).map(PtfFilename(_)).flatten
-    }
-
-
-    println("------")
-    println("Parquet keys retreived")
-    println("------")
-    */
+    val useS3 = true
 
     val ok_keys = Seq("source_id", "visit", "ALPHAWIN_J2000", "DELTAWIN_J2000",
       "MAG_BEST", "MAGERR_BEST",
       "FLUX_AUTO", "FLUXERR_AUTO",
       "FLAGS", "CLASS_STAR", "ZEROPOINT")
-
-    val small_subset = false
-
-    /*
-    val all_dfs = if (small_subset) {
-      val unique_dates = ptfFiles.map(_.date).distinct
-      val exposure1_files = ptfFiles.filter(_.date == unique_dates(0))
-      val exposure1_df = exposure1_files.map(df_with_source_id).reduceRight(_.union(_))
-
-      val exposure2_files = ptfFiles.filter(_.date == unique_dates(1))
-      val exposure2_df = exposure2_files.map(df_with_source_id).reduceRight(_.union(_))
-      exposure1_df.union(exposure2_df)
-    } else
-      ptfFiles.map(df_with_source_id).reduceRight(_.union(_)).coalesce(30)
-    */
 
     val allDFs = spark.read
                       .option("mergeSchema", "false")
@@ -100,7 +67,7 @@ object PtfIngestMain {
 
     // This should share zone determination code with assign_zones, but for
     // the moment this duplication is workable.
-    val zoneHeight = 30/3600.0
+    val zoneHeight = 5/3600.0
     val object_table = matched_data.groupBy("obj_id", "zone")
                                    .agg(avg(matched_data.col("ALPHAWIN_J2000")),
                                         avg(matched_data.col("DELTAWIN_J2000")),
@@ -112,13 +79,12 @@ object PtfIngestMain {
 
     val filtered_sources = object_table.select("obj_id").join(matched_data, "obj_id")
 
-    if (use_s3) {
+    if (useS3) {
       object_table.write.parquet("s3://palomar-transient-factory/object_table.parquet")
       filtered_sources.write.parquet("s3://palomar-transient-factory/matched_data.parquet")
     } else {
       object_table.write.parquet("object_table.parquet")
       filtered_sources.write.parquet("matched_data.parquet")
-
     }
 
     System.exit(0)

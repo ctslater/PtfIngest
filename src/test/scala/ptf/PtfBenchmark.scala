@@ -3,13 +3,11 @@ package ptfBenchmark
 
 import scala.util.Random
 import ptf.PtfIngest.match_within_zone
-import org.openjdk.jmh.annotations.Benchmark
 import ptf.{CoordsIdZone, SrcObjMatches}
 
 
 class ObjectMatchingBenchmark {
 
-  @Benchmark
   def runMatching: Iterable[SrcObjMatches] = {
 
     val zone = 5
